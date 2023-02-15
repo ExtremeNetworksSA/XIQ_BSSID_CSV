@@ -135,7 +135,7 @@ def main():
                     if 'Wifi' in dv["NAME"]:
                         msg += f'{devicename},{dv["NAME"]},{dv["STATE"]},{dv["MAC"]},{dv["SSID"]}\n'
         
-    with open("{}/{}".format(PATH,outputFile), 'a') as f:
+    with open("{}/{}".format(PATH,outputFile), 'w') as f:
         f.write(msg)
     print("Completed. Please look at {} for results".format(outputFile))
 
