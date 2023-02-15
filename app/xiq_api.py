@@ -429,7 +429,6 @@ class XIQ:
             "clis": ["show interface"]
         })
         url = "{}/devices/:cli?async=true".format(self.URL)
-        logger.info(url)
         for count in range(1, self.totalretries):
             try:
                 lro_url = self.__post_lro_call(url, payload, error_msg, count=count)
@@ -450,13 +449,21 @@ class XIQ:
                 break
         if success == False:
             logger.error(f"API call {error_msg} failed. Script is exiting...")
-            raise SystemExit #TODO - message box?
+            raise SystemExit 
 
         if lro_url:
             lro_running = True
             count = 1
+            print(f"Send CLI commands to {len(device_id_list)} devices using The long-running operation. Checking status in 60 secs.")
+            t = 60
+            while t:
+                mins, secs = divmod(t, 60)
+                timer = '{:02d}:{:02d}'.format(mins, secs)
+                print(timer, end='\r')
+                time.sleep(1)
+                t -= 1
             while lro_running and count < 11:
-                logger.info(f"Attempting to collect CLI responses - attempt {count} of 10")
+                print(f"Attempting to collect CLI responses - attempt {count} of 10")
                 try:
                     rawData = self.__get_api_call(url=lro_url)
                 except TypeError as e:
@@ -485,12 +492,12 @@ class XIQ:
                             logger.warning(rawData)
                             lro_running = False
                         else:
-                            logger.info(f"The long-running operation is not complete. Checking again in 120 secs.")
+                            print(f"The long-running operation is not complete. Checking again in 120 secs.")
                             t = 120
                             while t:
                                 mins, secs = divmod(t, 60)
                                 timer = '{:02d}:{:02d}'.format(mins, secs)
-                                #print(timer, end='\r')
+                                print(timer, end='\r')
                                 time.sleep(1)
                                 t -= 1
 
@@ -499,5 +506,4 @@ class XIQ:
             return(data)
         else:
             logger.warning("collecting CLI failed")
-            print("collecting CLI failed")
-            raise SystemExit #Todo - message box?
+            raise SystemExit 

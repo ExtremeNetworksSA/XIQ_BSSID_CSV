@@ -124,7 +124,6 @@ def main():
     if id_list:
         rawData = x.sendCLI(id_list)
         for device_id in rawData['device_cli_outputs']:
-                print(device_id)
                 output = rawData['device_cli_outputs'][device_id][0]['output']
                 devicename = device_df.loc[int(device_id),'hostname']
                 with open('{}/templates/{}'.format(PATH,templateraw), 'r') as f:
