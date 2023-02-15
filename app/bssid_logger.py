@@ -10,7 +10,7 @@ formatter = logging.Formatter('%(levelname)s: %(message)s')
 
 PATH = os.path.dirname(os.path.abspath(__file__))
 logging.basicConfig(
-	filename='{}/XIQ_bssid_csv.log'.format(parent_dir),
+	filename='{}/XIQ_bssid_csv.log'.format(current_dir),
 	filemode='a',
 	level=os.environ.get("LOGLEVEL", "INFO"),
 	format= '{}: %(name)s - %(levelname)s - %(message)s'.format(time.strftime("%Y-%m-%d %H:%M"))

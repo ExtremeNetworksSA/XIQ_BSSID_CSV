@@ -60,9 +60,13 @@ def main():
     filename = str(input("Please enter the file with the list of devices: ")).strip()
     filename = filename.replace("\ ", " ")
     filename = filename.replace("'", "")
-
-    with open(filename, 'r') as f:
-        device_list = f.read().splitlines()
+    try:
+        with open(filename, 'r') as f:
+            device_list = f.read().splitlines()
+    except FileNotFoundError as e:
+        logger.warning(e)
+        print("script is exiting")
+        raise SystemExit
 
     
     print("Enter your XIQ login credentials")
