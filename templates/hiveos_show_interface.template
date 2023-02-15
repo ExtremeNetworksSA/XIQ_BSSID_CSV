@@ -1,0 +1,16 @@
+Value NAME (\S+)
+Value MAC ([a-fA-F0-9:\.]+)
+Value MODE (\S+)
+Value STATE (\w+)
+Value CHANNEL (\S+)
+Value VLAN (\S+)
+Value RADIO (\S+)
+Value HIVE (\S+)
+Value SSID (\S+)
+
+Start
+  ^${NAME}\s+${MAC}\s+${MODE}\s+${STATE}\s+${CHANNEL}\s+${VLAN}\s+${RADIO}\s+${HIVE}\s+${SSID}\s*$$ -> Record
+  ^.+\.+
+  ^\s*$$
+  ^Name\s+MAC\s+addr\s+Mode\s+State\s+Chan(Width)\s+VLAN\s+Radio\s+Hive\s+SSID\s*$$
+  ^-+
