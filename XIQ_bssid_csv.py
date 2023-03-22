@@ -72,8 +72,16 @@ def main():
     print("Enter your XIQ login credentials")
     username = input("Email: ")
     password = getpass.getpass("Password: ")
-    x = XIQ(user_name=username,password = password)
-
+    try:
+        x = XIQ(user_name=username,password = password)
+    except ValueError as e:
+        print("script is exiting...")
+        raise SystemExit
+    except:
+        print("Unknown Error connecting to XIQ.")
+        print("script is exiting...")
+        raise SystemExit
+    
     #OPTIONAL - use externally managed XIQ account
     if args.external:
         accounts, viqName = x.selectManagedAccount()

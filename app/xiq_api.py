@@ -32,15 +32,12 @@ class XIQ:
             try:
                 self.__getAccessToken(user_name, password)
             except ValueError as e:
-                print(e)
                 raise ValueError(e)
             except HTTPError as e:
-               print(e)
                raise ValueError(e)
             except:
                 log_msg = "Unknown Error: Failed to generate token for XIQ"
                 logger.error(log_msg)
-                print(log_msg)
                 raise ValueError(log_msg)
     #API CALLS
     def __setup_get_api_call(self, info, url):
