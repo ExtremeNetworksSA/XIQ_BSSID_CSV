@@ -417,13 +417,13 @@ class XIQ:
 
 
     ## CLI
-    def sendCLI(self, device_id_list):
+    def sendCLI(self, device_id_list, cmds):
         error_msg = "to send CLI command"
         payload = json.dumps({
             "devices": {
                 "ids": device_id_list
             },
-            "clis": ["show interface"]
+            "clis": cmds
         })
         url = "{}/devices/:cli?async=true".format(self.URL)
         for count in range(1, self.totalretries):

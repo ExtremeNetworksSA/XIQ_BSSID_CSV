@@ -126,11 +126,13 @@ def main():
         batch = device_list[i:i+sizeofbatch]
         if filetype == 'name':
             rawDeviceData = x.collectDevices(pageSize=50,hostname=batch)
-            device_df = pd.DataFrame(rawDeviceData)
-            device_df.set_index('id',inplace=True)
+            if rawDeviceData:
+                device_df = pd.DataFrame(rawDeviceData)
+                device_df.set_index('id',inplace=True)
             id_list = [sub['id'] for sub in rawDeviceData ]
     if id_list:
-        rawData = x.sendCLI(id_list)
+        commands = ["show interface"]
+        rawData = x.sendCLI(id_list, commands)
         for device_id in rawData['device_cli_outputs']:
                 output = rawData['device_cli_outputs'][device_id][0]['output']
                 devicename = device_df.loc[int(device_id),'hostname']
