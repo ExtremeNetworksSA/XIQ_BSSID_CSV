@@ -61,69 +61,13 @@ class XIQ:
             print("exiting script...")
             raise SystemExit
         if 'error' in response:
-            if response['error_mssage']:
+            if response['error_message']:
                 log_msg = (f"Status Code {response['error_id']}: {response['error_message']}")
                 logger.error(log_msg)
                 print(f"API Failed {info} with reason: {log_msg}")
                 print("Script is exiting...")
                 raise SystemExit
         return response
-        
-    def __setup_post_api_call(self, info, url, payload):
-        success = 0
-        for count in range(1, self.totalretries):
-            try:
-                response = self.__post_api_call(url=url, payload=payload)
-            except ValueError as e:
-                print(f"API to {info} failed attempt {count} of {self.totalretries} with {e}")
-            except Exception as e:
-                print(f"API to {info} failed with {e}")
-                print('script is exiting...')
-                raise SystemExit
-            except:
-                print(f"API to {info} failed attempt {count} of {self.totalretries} with unknown API error")
-            else:
-                success = 1
-                break
-        if success != 1:
-            print("failed {}. Cannot continue to import".format(info))
-            print("exiting script...")
-            raise SystemExit
-        if 'error' in response:
-            if response['error_mssage']:
-                log_msg = (f"Status Code {response['error_id']}: {response['error_message']}")
-                logger.error(log_msg)
-                print(f"API Failed {info} with reason: {log_msg}")
-                print("Script is exiting...")
-                raise SystemExit
-        return response
-    
-    def __setup_put_api_call(self, info, url, payload=''):
-        success = 0
-        for count in range(1, self.totalretries):
-            try:
-                if payload:
-                    self.__put_api_call(url=url, payload=payload)
-                else:
-                    self.__put_api_call(url=url)
-            except ValueError as e:
-                print(f"API to {info} failed attempt {count} of {self.totalretries} with {e}")
-            except Exception as e:
-                print(f"API to {info} failed with {e}")
-                print('script is exiting...')
-                raise SystemExit
-            except:
-                print(f"API to {info} failed attempt {count} of {self.totalretries} with unknown API error")
-            else:
-                success = 1
-                break
-        if success != 1:
-            print("failed to {}. Cannot continue to import".format(info))
-            print("exiting script...")
-            raise SystemExit
-        
-        return 'Success'
-
 
     def __get_api_call(self, url):
         try:
@@ -185,34 +129,6 @@ class XIQ:
             raise ValueError("Unable to parse the data from json, script cannot proceed")
         return data
     
-    def __put_api_call(self, url, payload=''):
-        try:
-            if payload:
-                response = requests.put(url, headers= self.headers, data=payload)
-            else:
-                response = requests.put(url, headers= self.headers)
-        except HTTPError as http_err:
-            logger.error(f'HTTP error occurred: {http_err} - on API {url}')
-            raise ValueError(f'HTTP error occurred: {http_err}') 
-        if response is None:
-            log_msg = "ERROR: No response received from XIQ!"
-            logger.error(log_msg)
-            raise ValueError(log_msg)
-        if response.status_code != 200:
-            log_msg = f"Error - HTTP Status Code: {str(response.status_code)}"
-            logger.error(f"{log_msg}")
-            try:
-                data = response.json()
-            except json.JSONDecodeError:
-                logger.warning(f"\t\t{response.text}")
-            else:
-                if 'error_message' in data:
-                    logger.warning(f"\t\t{data['error_message']}")
-                    raise Exception(data['error_message'])
-                else:
-                    logger.warning(data)
-                raise ValueError(log_msg)
-        return response.status_code
 
     def __getAccessToken(self, user_name, password):
         info = "get XIQ token"
@@ -267,21 +183,15 @@ class XIQ:
             data = response.headers
             # return the URL needed to check the status and collect data for the LRO
             return data['Location']
+    
+    def __getFloorsFromBuilding(self, building_id):
+        info = "get floor id"
+        url = self.URL + "/locations/tree?parentId=" + str(building_id)
+        floors = self.__setup_get_api_call(info, url)
+        floor_ids = [floor['id'] for floor in floors ]
+        return floor_ids
 
-
-    #BUILDINGS
-    def __buildLocationDf(self, location, pname = 'Global'):
-        if 'parent_id' not in location:
-            temp_df = pd.DataFrame([{'id': location['id'], 'name':location['name'], 'type': 'Global', 'parent':pname}])
-            self.locationTree_df = pd.concat([self.locationTree_df, temp_df], ignore_index=True)
-        else:
-            temp_df = pd.DataFrame([{'id': location['id'], 'name':location['name'], 'type': location['type'], 'parent':pname}])
-            self.locationTree_df = pd.concat([self.locationTree_df, temp_df], ignore_index=True)
-        r = json.dumps(location['children'])
-        if location['children']:
-            parent_name = location['name']
-            for child in location['children']:
-                self.__buildLocationDf(child, pname=parent_name)
+        
 
     ## EXTERNAL FUNCTION
 
@@ -372,27 +282,45 @@ class XIQ:
             logger.warning(log_msg)
             raise ValueError(log_msg) 
 
-    ## LOCATIONS
-    def gatherLocations(self):
-        info=f"gather location tree"
-        url = "{}/locations/tree".format(self.URL)
-        response = self.__setup_get_api_call(info,url)
-        for location in response:
-            self.__buildLocationDf(location)
-        return (self.locationTree_df)
+    ## Buildings
+    def getFloorIds(self, building_name):
+        info = "collecting floor ids"
+        page = 1
+        pageCount = 1
+
+        buildings = []
+        while page <= pageCount:
+            url = self.URL + "/locations/building?name=" + building_name
+            rawList = self.__setup_get_api_call(info,url)
+            buildings = buildings + rawList['data']
+            pageCount = rawList['total_pages']
+            print(f"completed page {page} of {rawList['total_pages']} collecting Buildings")
+            page = rawList['page'] + 1
+
+        if len(buildings) != 1:
+            print(f"There were {len(buildings)} buildings found containing the name {building_name}")
+            print("script is exiting....")
+            raise SystemExit
+        floor_ids = self.__getFloorsFromBuilding(buildings[0]['id'])
+        return floor_ids
+        
+
 
     ## Devices
     def collectDevices(self, pageSize, location_id=None, hostname=None, macaddr=None):
         info = "collecting devices" 
         page = 1
         pageCount = 1
-        firstCall = True
 
         devices = []
         while page <= pageCount:
-            url = self.URL + "/devices?page=" + str(page) + "&limit=" + str(pageSize)
+            url = self.URL + "/devices?page=" + str(page) + "&limit=" + str(pageSize) + "&connected=true"
             if location_id:
-                url = url  + "&locationId=" +str(location_id)
+                if type(location_id) == list:
+                    for l_id in location_id:
+                        url = url + "&locationIds=" + str(l_id)
+                else:
+                    url = url  + "&locationId=" + str(location_id)
             elif hostname:
                 if type(hostname) == list:
                     for name in hostname:
@@ -407,10 +335,9 @@ class XIQ:
                     url = url + "&macAddresses=" +str(macaddr)
                 
             rawList = self.__setup_get_api_call(info,url)
-            devices = devices + rawList['data']
+            devices = devices + [device for device in rawList['data'] if 'device_function' in device and device['device_function'] == "AP"]
 
-            if firstCall == True:
-                pageCount = rawList['total_pages']
+            pageCount = rawList['total_pages']
             print(f"completed page {page} of {rawList['total_pages']} collecting Devices")
             page = rawList['page'] + 1 
         return devices

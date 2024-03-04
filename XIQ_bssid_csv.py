@@ -35,6 +35,10 @@ args = parser.parse_args()
 
 filetype = 'name'
 
+selection = 0
+device_name = ''
+building_name = ''
+
 def yesNoLoop(question):
     validResponse = False
     while validResponse != True:
@@ -56,17 +60,49 @@ def main():
     msg = 'AP NAME, INTERFACE, STATE, BSSID, SSID\n'
 
     #TODO - Prompt for all devices, list of devices from file, or single device.
-    ## Device Files
-    filename = str(input("Please enter the file with the list of devices: ")).strip()
-    filename = filename.replace("\ ", " ")
-    filename = filename.replace("'", "")
-    try:
-        with open(filename, 'r') as f:
-            device_list = f.read().splitlines()
-    except FileNotFoundError as e:
-        logger.warning(e)
-        print("script is exiting")
-        raise SystemExit
+    validResponse = False
+    while not validResponse:
+        print("Please choose from the options below:")
+        print("1. Collect bssids from a list of AP names in a text file. (AP name on each line)")
+        print("2. Collect the bssid for a single device by name.")
+        print("3. Collect bssids for all devices in a building.")
+        print("4. Collect bssids for all devices in VIQ.")
+       
+        selection = input("Please enter 1 - 4: ")
+        try:
+            selection = int(selection)
+        except:
+            sys.stdout.write(YELLOW)
+            sys.stdout.write("Please enter a valid response!!\n")
+            sys.stdout.write(RESET)
+            continue
+        if selection == 1:
+            validResponse = True
+            ## Device Files
+            filename = str(input("Please enter the file with the list of devices: ")).strip()
+            filename = filename.replace("\\ ", " ")
+            filename = filename.replace("'", "")
+            try:
+                with open(filename, 'r') as f:
+                    device_list = f.read().splitlines()
+            except FileNotFoundError as e:
+                logger.warning(e)
+                print("script is exiting")
+                raise SystemExit
+        elif selection == 2:
+            validResponse = True
+            device_name = input("Enter the name of the device you would like to collect: ")
+        elif selection == 3:
+            validResponse = True
+            building_name = input("Enter the name of the building you would like to collect devices from: ")
+        elif selection == 4:
+            validResponse = True
+        else:
+            sys.stdout.write(YELLOW)
+            sys.stdout.write(f"{selection} is not a valid response between 1-4.\n")
+            sys.stdout.write("Please enter a valid response!!\n")
+            sys.stdout.write(RESET)
+
 
     
     print("Enter your XIQ login credentials")
@@ -120,16 +156,35 @@ def main():
                         newViqID = (accounts_df.loc[int(selection),'id'])
                         newViqName = (accounts_df.loc[int(selection),'name'])
                         x.switchAccount(newViqID, newViqName)
-
-    sizeofbatch = 50
-    for i in range(0, len(device_list), sizeofbatch):
-        batch = device_list[i:i+sizeofbatch]
-        if filetype == 'name':
-            rawDeviceData = x.collectDevices(pageSize=50,hostname=batch)
-            if rawDeviceData:
-                device_df = pd.DataFrame(rawDeviceData)
-                device_df.set_index('id',inplace=True)
-            id_list = [sub['id'] for sub in rawDeviceData ]
+    if selection == 1:
+        sizeofbatch = 50
+        for i in range(0, len(device_list), sizeofbatch):
+            batch = device_list[i:i+sizeofbatch]
+            if filetype == 'name':
+                rawDeviceData = x.collectDevices(pageSize=sizeofbatch,hostname=batch)
+                if rawDeviceData:
+                    device_df = pd.DataFrame(rawDeviceData)
+                    device_df.set_index('id',inplace=True)
+                id_list = [sub['id'] for sub in rawDeviceData ]
+    elif selection == 2:
+        rawDeviceData = x.collectDevices(pageSize=100,hostname=[device_name])
+        if rawDeviceData:
+            device_df = pd.DataFrame(rawDeviceData)
+            device_df.set_index('id',inplace=True)
+        id_list = [sub['id'] for sub in rawDeviceData ]
+    elif selection == 3:
+        floor_ids = x.getFloorIds(building_name)  
+        rawDeviceData = x.collectDevices(pageSize=100,location_id=floor_ids)
+        if rawDeviceData:
+            device_df = pd.DataFrame(rawDeviceData)
+            device_df.set_index('id',inplace=True)
+        id_list = [sub['id'] for sub in rawDeviceData ]
+    elif selection == 4:
+        rawDeviceData = x.collectDevices(pageSize=100)
+        if rawDeviceData:
+            device_df = pd.DataFrame(rawDeviceData)
+            device_df.set_index('id',inplace=True)
+        id_list = [sub['id'] for sub in rawDeviceData ]
     if id_list:
         commands = ["show interface"]
         rawData = x.sendCLI(id_list, commands)
@@ -140,9 +195,13 @@ def main():
                     test_template = textfsm.TextFSM(f)
                 test_config = test_template.ParseText(output)
                 parsed = [dict(zip(test_template.header, row)) for row in test_config]
+                if len(parsed) == 0:
+                    logger.warning(f'Device {devicename} returned response: "{output}". This device will be skipped.')
                 for dv in parsed:
                     if 'Wifi' in dv["NAME"]:
                         msg += f'{devicename},{dv["NAME"]},{dv["STATE"]},{dv["MAC"]},{dv["SSID"]}\n'
+    else:
+        logger.warning("No devices were found!")               
         
     with open("{}/{}".format(PATH,outputFile), 'w') as f:
         f.write(msg)
