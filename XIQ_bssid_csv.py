@@ -57,7 +57,7 @@ def yesNoLoop(question):
     return response
 
 def main():
-    msg = 'AP NAME, INTERFACE, STATE, BSSID, SSID\n'
+    msg = 'AP NAME, IP ADDRESS, MAC ADDRESS, INTERFACE, STATE, BSSID, SSID\n'
 
     #TODO - Prompt for all devices, list of devices from file, or single device.
     validResponse = False
@@ -191,6 +191,8 @@ def main():
         for device_id in rawData['device_cli_outputs']:
                 output = rawData['device_cli_outputs'][device_id][0]['output']
                 devicename = device_df.loc[int(device_id),'hostname']
+                ip_address = device_df.loc[int(device_id),'ip_address']
+                mac_address = device_df.loc[int(device_id),'mac_address']
                 with open('{}/templates/{}'.format(PATH,templateraw), 'r') as f:
                     test_template = textfsm.TextFSM(f)
                 test_config = test_template.ParseText(output)
@@ -199,7 +201,7 @@ def main():
                     logger.warning(f'Device {devicename} returned response: "{output}". This device will be skipped.')
                 for dv in parsed:
                     if 'Wifi' in dv["NAME"]:
-                        msg += f'{devicename},{dv["NAME"]},{dv["STATE"]},{dv["MAC"]},{dv["SSID"]}\n'
+                        msg += f'{devicename},{ip_address},{mac_address},{dv["NAME"]},{dv["STATE"]},{dv["MAC"]},{dv["SSID"]}\n'
     else:
         logger.warning("No devices were found!")               
         
